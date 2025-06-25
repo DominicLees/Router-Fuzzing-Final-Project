@@ -1,5 +1,8 @@
 .DS_Store
-binaries/
 *.bin
 *.img
 *.out
+
+binaries/
+fuzz-container/includes
+fuzz-container/out
