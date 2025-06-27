@@ -1,7 +1,7 @@
 FROM ubuntu:24.04
 
 WORKDIR /target
-COPY includes/. /
+COPY includes/. /target
 
 # Install dependencies
 RUN apt-get update
@@ -15,4 +15,4 @@ RUN git clone https://github.com/AFLplusplus/AFLplusplus
 WORKDIR /AFLplusplus
 RUN make source-only && make install
 ENV CC=/AFLplusplus/afl-clang-fast CXX=/AFLplusplus/afl-clang-fast++
-WORKDIR /
+WORKDIR /target

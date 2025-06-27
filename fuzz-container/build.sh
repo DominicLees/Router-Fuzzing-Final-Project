@@ -1,4 +1,4 @@
 #!/bin/bash
 
-mkdir includes
+mkdir -p includes
 docker build -t fuzz -f Dockerfile .
