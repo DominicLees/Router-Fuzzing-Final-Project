@@ -15,4 +15,7 @@ RUN git clone https://github.com/AFLplusplus/AFLplusplus
 WORKDIR /AFLplusplus
 RUN make source-only && make install
 ENV CC=/AFLplusplus/afl-clang-fast CXX=/AFLplusplus/afl-clang-fast++
+
+# Compile C files for fuzzing
 WORKDIR /target
+RUN find ./ -type f -name "*.c" -exec sh -c 'afl-cc "$1" -o "${1%.c}.out"' _ {} \;
