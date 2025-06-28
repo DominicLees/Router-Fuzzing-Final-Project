@@ -19,3 +19,7 @@ ENV CC=/AFLplusplus/afl-clang-fast CXX=/AFLplusplus/afl-clang-fast++
 # Compile C files for fuzzing
 WORKDIR /target
 RUN find ./ -type f -name "*.c" -exec sh -c 'afl-cc "$1" -o "${1%.c}.out"' _ {} \;
+
+# Move txt files into /seed
+RUN mkdir -p seed
+RUN find ./ -type f -name "*.txt" -exec mv "{}" seed \;
