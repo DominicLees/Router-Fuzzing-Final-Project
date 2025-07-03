@@ -10,7 +10,7 @@ RUN apt-get install -y gcc-$(gcc --version|head -n1|sed 's/\..*//'|sed 's/.* //'
 RUN git clone https://github.com/AFLplusplus/AFLplusplus
 WORKDIR /AFLplusplus
 RUN make source-only && make install
-ENV CC=/AFLplusplus/afl-clang-fast CXX=/AFLplusplus/afl-clang-fast++
+ENV CC=/AFLplusplus/afl-clang-fast CXX=/AFLplusplus/afl-clang-fast++ AFL_SKIP_CPUFREQ=0
 
 # Copy in included files
 WORKDIR /target
