@@ -6,7 +6,7 @@
 
 // Simply program that can currently run another program and get its return status
 int main(int argc, char* argv[]) {
-    if (argc < 3) {
+    if (argc < 2) {
         printf("Incorrect number of arguments");
         return 1;
     }
@@ -17,7 +17,12 @@ int main(int argc, char* argv[]) {
         return 1;
     // Child fork
     } else if (fork_id == 0) {
-        char *args[] = {argv[1], argv[2], (char*)0};
+        char *args[argc];
+        for (size_t i = 0; i < argc - 1; i++) {
+            args[i] = argv[i + 1];
+        }
+        args[argc - 1] = '\0';
+        
         if (execv(argv[1], args) < 0) {
             perror("execv error");
             return -1;
@@ -30,7 +35,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         int status = WEXITSTATUS(stat_loc);
-        printf("Exit status: %d", status);
+        printf("\nExit status: %d", status);
     }
     return 0;
 }
