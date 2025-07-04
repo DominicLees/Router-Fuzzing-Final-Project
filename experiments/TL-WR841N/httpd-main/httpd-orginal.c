@@ -2,24 +2,19 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <unistd.h>
 
 /* 
     A recreation of the main function from the httpd binary from the TL-WR841N router
     Takes the path to the web server files as an argument
 */
 int main (int argc, char* argv[]) {
-    char g_http_rootDir[100];
-    // Updated to read from stdin to work with AFL
-    int read_result = read(STDIN_FILENO, g_http_rootDir, 100);
-    if (read_result < 0) {
-        perror("read error");
-        return 1;
-    } else if (read_result == 0) {
-        strcpy(g_http_rootDir, "/web/");
-    }
+    char* g_http_rootDir;    
+    if (argc == 1)
+        g_http_rootDir = "/web/";
+    else
+        g_http_rootDir = argv[1];
 
-    char* http_rootDir_1 = &g_http_rootDir[0];
+    char* http_rootDir_1 = g_http_rootDir;
     size_t http_rootDir_length = strlen(http_rootDir_1);
 
     if (http_rootDir_length >= 33) {
