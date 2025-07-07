@@ -4,5 +4,5 @@
 *.out
 
 binaries/
-fuzz-container/includes
-fuzz-container/out
+fuzz-container/*/includes
+fuzz-container/*/out
