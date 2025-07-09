@@ -20,8 +20,8 @@ with open("httpd", mode="rb") as file:
 
 print("Starting emulation")
 try:
-    # initialise emulator in MIPS32 + EB mode
-    mu = Uc(UC_ARCH_MIPS, UC_MODE_MIPS32 + UC_MODE_BIG_ENDIAN)
+    # initialise emulator in MIPS32 + EL mode
+    mu = Uc(UC_ARCH_MIPS, UC_MODE_MIPS32 + UC_MODE_LITTLE_ENDIAN)
 
     # map 2MB memory for this emulation
     mu.mem_map(ADDRESS, 2 * 1024 * 1024)
