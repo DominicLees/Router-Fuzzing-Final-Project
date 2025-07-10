@@ -21,8 +21,12 @@ def hook_code(uc, address, size, user_data):
 # callback for skipping function calls
 def hook_skip_function(uc, address, size, user_data):
     print(">>> Hooked function at 0x%x" % address)
+    # set return value
+    if user_data:
+        uc.reg_write(UC_MIPS_REG_V0, user_data)
+        print(">>> Set return value to %d" % user_data)
     # set PC to return address
-    return_address = address + 16
+    return_address = address + 4
     uc.reg_write(UC_MIPS_REG_PC, return_address)
     print(">>> Simulated return to 0x%x" % return_address)
 
