@@ -1,9 +1,8 @@
 # based on https://github.com/unicorn-engine/unicorn/blob/master/bindings/python/tests/test_mips.py
 from unicorn import *
 from unicorn.mips_const import *
-import inspect
 
-CODE_ADDRESS = 0x00100000
+CODE_ADDRESS = 0x400000
 ENTRY_POINT = 0x402b30
 END_OF_MAIN = 0x402c64
 MAIN_SIZE = END_OF_MAIN - ENTRY_POINT
@@ -33,7 +32,7 @@ mu.mem_map(CODE_ADDRESS, 2 * 1024 * 1024)
 mu.mem_write(CODE_ADDRESS, binary_data)
 
 # set program counter to start of program
-mu.reg_write(UC_MIPS_REG_PC, CODE_ADDRESS)
+mu.reg_write(UC_MIPS_REG_PC, ENTRY_POINT)
 
 # setup the stack
 mu.mem_map(STACK_ADDRESS, STACK_SIZE)
@@ -51,6 +50,5 @@ try:
     mu.emu_start(mu.reg_read(UC_MIPS_REG_PC), END_ADDRESS)
 except UcError as e:
     print("ERROR: %s" % e)
-    print("Last function called: %s" % inspect.trace()[-1][3])
 
 print("Finished emulation")
