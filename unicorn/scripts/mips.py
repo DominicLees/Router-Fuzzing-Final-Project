@@ -2,10 +2,11 @@
 from unicorn import *
 from unicorn.mips_const import *
 
+# constants are currently setup to run http_parser_main from the httpd binary from the TL-WR841N router
 CODE_ADDRESS = 0x400000
-ENTRY_POINT = 0x405da8
-END_OF_MAIN = 0x4074c0
-MAIN_SIZE = END_OF_MAIN - ENTRY_POINT
+ENTRY_POINT = 0x405da8 # address for http_parser_main()
+END_OF_FUNCTION = 0x4074c0
+MAIN_SIZE = END_OF_FUNCTION - ENTRY_POINT
 END_ADDRESS = CODE_ADDRESS + MAIN_SIZE
 STACK_ADDRESS = 0x00100000
 STACK_SIZE = 0x00010000
@@ -58,6 +59,9 @@ mu.hook_add(UC_HOOK_CODE, hook_code)
 
 # skip memset
 mu.hook_add(UC_HOOK_CODE, hook_skip_function, None, begin=0x405df4, end=0x405df4)
+
+# skip http_filter_fillMac
+mu.hook_add(UC_HOOK_CODE, hook_skip_function, 1, begin=0x405e0c, end=0x405e0c)
 
 print("Starting emulation")
 try:
