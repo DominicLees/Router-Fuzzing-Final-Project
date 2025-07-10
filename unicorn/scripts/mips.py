@@ -3,11 +3,11 @@ from unicorn import *
 from unicorn.mips_const import *
 
 CODE_ADDRESS = 0x400000
-ENTRY_POINT = 0x402b30
-END_OF_MAIN = 0x402c64
+ENTRY_POINT = 0x405da8
+END_OF_MAIN = 0x4074c0
 MAIN_SIZE = END_OF_MAIN - ENTRY_POINT
 END_ADDRESS = CODE_ADDRESS + MAIN_SIZE
-STACK_ADDRESS = 0x01000000
+STACK_ADDRESS = 0x00100000
 STACK_SIZE = 0x00010000
 
 # callback for tracing basic blocks
@@ -17,6 +17,14 @@ def hook_block(uc, address, size, user_data):
 # callback for tracing instructions
 def hook_code(uc, address, size, user_data):
     print(">>> Tracing instruction at 0x%x, instruction size = 0x%x" % (address, size))
+
+# callback for skipping function calls
+def hook_skip_function(uc, address, size, user_data):
+    print(">>> Hooked function at 0x%x" % address)
+    # set PC to return address
+    return_address = address + 16
+    uc.reg_write(UC_MIPS_REG_PC, return_address)
+    print(">>> Simulated return to 0x%x" % return_address)
 
 # open binary
 with open("httpd", mode="rb") as file:
@@ -43,6 +51,9 @@ mu.hook_add(UC_HOOK_BLOCK, hook_block)
 
 # tracing all instructions with customized callback
 mu.hook_add(UC_HOOK_CODE, hook_code)
+
+# skip memset
+mu.hook_add(UC_HOOK_CODE, hook_skip_function, None, begin=0x405df4, end=0x405df4)
 
 print("Starting emulation")
 try:
