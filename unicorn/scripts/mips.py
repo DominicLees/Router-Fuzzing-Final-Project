@@ -1,6 +1,7 @@
 # based on https://github.com/unicorn-engine/unicorn/blob/master/bindings/python/tests/test_mips.py
 from unicorn import *
 from unicorn.mips_const import *
+from termcolor import cprint
 
 # constants are currently setup to run http_parser_main from the httpd binary from the TL-WR841N router
 CODE_ADDRESS = 0x400000
@@ -21,15 +22,15 @@ def hook_code(uc, address, size, user_data):
 
 # callback for skipping function calls
 def hook_skip_function(uc, address, size, user_data):
-    print(">>> Hooked function at 0x%x" % address)
+    cprint(">>> Hooked function at 0x%x" % address, "yellow")
     # set return value
     if user_data:
         uc.reg_write(UC_MIPS_REG_V0, user_data)
-        print(">>> Set return value to %d" % user_data)
+        cprint(">>> Set return value to %d" % user_data, "yellow")
     # set PC to return address
     return_address = address + 4
     uc.reg_write(UC_MIPS_REG_PC, return_address)
-    print(">>> Simulated return to 0x%x" % return_address)
+    cprint(">>> Simulated return to 0x%x" % return_address, "yellow")
 
 # open binary
 with open("httpd", mode="rb") as file:
@@ -66,8 +67,9 @@ mu.hook_add(UC_HOOK_CODE, hook_skip_function, 1, begin=0x405e0c, end=0x405e0c)
 print("Starting emulation")
 try:
     # emulate machine code in infinite time
-    mu.emu_start(mu.reg_read(UC_MIPS_REG_PC), END_ADDRESS)
+    mu.emu_start(mu.reg_read(UC_MIPS_REG_PC), END_OF_FUNCTION)
+    cprint("Return value: %d" % mu.reg_read(UC_MIPS_REG_V0), "green")
 except UcError as e:
-    print("ERROR: %s" % e)
+    cprint("ERROR: %s" % e, "red")
 
 print("Finished emulation")
