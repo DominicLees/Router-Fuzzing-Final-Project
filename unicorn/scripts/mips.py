@@ -3,14 +3,6 @@ from unicorn import *
 from unicorn.mips_const import *
 from termcolor import cprint
 
-# constants are currently setup to run str2num from the httpd binary from the TL-WR841N router
-CODE_ADDRESS = 0x400000
-ENTRY_POINT = 0x412480
-END_OF_FUNCTION = 0x4124b4
-STACK_ADDRESS = 0x00100000
-STACK_SIZE = 0x00010000
-STRING = b"123\00"
-
 # callback for tracing basic blocks
 def hook_block(uc, address, size, user_data):
     print(">>> Tracing basic block at 0x%x, block size = 0x%x" % (address, size))
@@ -51,56 +43,69 @@ def hook_mem_write_unmapped(uc, access, address, size, value, user_data):
     cprint("Attempt to write to 0x%x" % address, "red")
     return -1
 
-# open binary
-with open("httpd", mode="rb") as file:
-    binary_data = file.read()
+class Emu:
+    CODE_ADDRESS = 0x400000
+    STACK_ADDRESS = 0x00100000
+    STACK_SIZE = 0x00010000
 
-# initialise emulator in MIPS32 + EL mode
-mu = Uc(UC_ARCH_MIPS, UC_MODE_MIPS32 + UC_MODE_LITTLE_ENDIAN)
+    def __init__(self, binary, entry_point, end_of_function):
+        self.entry_point = entry_point
+        self.end_of_function = end_of_function
+        # open binary
+        with open(binary, mode="rb") as file:
+            self.binary_data = file.read()
 
-# map 2MB memory for this emulation
-mu.mem_map(CODE_ADDRESS, 2 * 1024 * 1024)
+    def setup(self):
+        # initialise emulator in MIPS32 + EL mode
+        mu = Uc(UC_ARCH_MIPS, UC_MODE_MIPS32 + UC_MODE_LITTLE_ENDIAN)
 
-# write machine code to be emulated to memory
-mu.mem_write(CODE_ADDRESS, binary_data)
+        # map 2MB memory for this emulation
+        mu.mem_map(self.CODE_ADDRESS, 2 * 1024 * 1024)
 
-# set program counter to start of program
-mu.reg_write(UC_MIPS_REG_PC, ENTRY_POINT)
+        # write machine code to be emulated to memory
+        mu.mem_write(self.CODE_ADDRESS, self.binary_data)
 
-# setup the stack
-mu.mem_map(STACK_ADDRESS, STACK_SIZE)
-mu.reg_write(UC_MIPS_REG_SP, STACK_ADDRESS + STACK_SIZE)
+        # setup the stack
+        mu.mem_map(self.STACK_ADDRESS, self.STACK_SIZE)
+        mu.reg_write(UC_MIPS_REG_SP, self.STACK_ADDRESS + self.STACK_SIZE)
 
-# pass in a string as an argument to the function
-mu.mem_map(0x10000, 0x1000)
-mu.mem_write(0x10000, STRING)
-mu.reg_write(UC_MIPS_REG_A0, 0x10000)
+        # map memory for arguments to the function
+        mu.mem_map(0x10000, 0x1000)
 
-# tracing all basic blocks with customized callback
-mu.hook_add(UC_HOOK_BLOCK, hook_block)
+        # tracing all basic blocks with customized callback
+        mu.hook_add(UC_HOOK_BLOCK, hook_block)
 
-# tracing all instructions with customized callback
-mu.hook_add(UC_HOOK_CODE, hook_code)
+        # tracing all instructions with customized callback
+        mu.hook_add(UC_HOOK_CODE, hook_code)
 
-# tracing all memory read/writes
-mu.hook_add(UC_HOOK_MEM_READ, hook_mem_read)
-mu.hook_add(UC_HOOK_MEM_WRITE, hook_mem_write)
-mu.hook_add(UC_HOOK_MEM_FETCH_UNMAPPED, hook_mem_fetch_unmapped)
-mu.hook_add(UC_HOOK_MEM_READ_UNMAPPED, hook_mem_read_unmapped)
-mu.hook_add(UC_HOOK_MEM_WRITE_UNMAPPED, hook_mem_write_unmapped)
+        # tracing all memory read/writes
+        mu.hook_add(UC_HOOK_MEM_READ, hook_mem_read)
+        mu.hook_add(UC_HOOK_MEM_WRITE, hook_mem_write)
+        mu.hook_add(UC_HOOK_MEM_FETCH_UNMAPPED, hook_mem_fetch_unmapped)
+        mu.hook_add(UC_HOOK_MEM_READ_UNMAPPED, hook_mem_read_unmapped)
+        mu.hook_add(UC_HOOK_MEM_WRITE_UNMAPPED, hook_mem_write_unmapped)
+        self.mu = mu
 
-# skip memset
-# mu.hook_add(UC_HOOK_CODE, hook_skip_function, None, begin=0x405df4, end=0x405df4)
+    def run(self, arg):
+        if hasattr(self, "mu") == False:
+            self.setup()
 
-# skip http_filter_fillMac
-# mu.hook_add(UC_HOOK_CODE, hook_skip_function, 1, begin=0x405e0c, end=0x405e0c)
+        # set program counter to start of program
+        self.mu.reg_write(UC_MIPS_REG_PC, self.entry_point)
 
-print("Starting emulation")
-try:
-    # emulate machine code in infinite time
-    mu.emu_start(mu.reg_read(UC_MIPS_REG_PC), END_OF_FUNCTION)
-    cprint("Return value: %d" % mu.reg_read(UC_MIPS_REG_V0), "green")
-except UcError as e:
-    cprint("ERROR: %s" % e, "red")
+        # TODO: Allow multiple arguments to be passed
+        # pass in a string as an argument to the function
+        self.mu.mem_write(0x10000, arg)
+        self.mu.reg_write(UC_MIPS_REG_A0, 0x10000)
 
-print("Finished emulation")
+        result = 0
+        print("Starting emulation")
+        try:
+            self.mu.emu_start(self.mu.reg_read(UC_MIPS_REG_PC), self.end_of_function)
+            cprint("Return value: %d" % self.mu.reg_read(UC_MIPS_REG_V0), "green")
+        except UcError as e:
+            cprint("ERROR: %s" % e, "red")
+            result = -1
+
+        print("Finished emulation")
+        return result
