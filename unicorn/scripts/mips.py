@@ -20,6 +20,14 @@ def hook_block(uc, address, size, user_data):
 def hook_code(uc, address, size, user_data):
     print(">>> Tracing instruction at 0x%x, instruction size = 0x%x" % (address, size))
 
+# callback for tracing memory reads
+def hook_mem_read(uc, access, address, size, value, user_data):
+    cprint(">>> Reading memory at 0x%x, size = 0x%x" % (address, size), "blue")
+
+# callback for tracing memory writes
+def hook_mem_write(uc, access, address, size, value, user_data):
+    cprint(">>> Writing to memory at 0x%x, size = 0x%x, value = %d" % (address, size, value), "cyan")
+
 # callback for skipping function calls
 def hook_skip_function(uc, address, size, user_data):
     cprint(">>> Hooked function at 0x%x" % address, "yellow")
@@ -31,6 +39,18 @@ def hook_skip_function(uc, address, size, user_data):
     return_address = address + 4
     uc.reg_write(UC_MIPS_REG_PC, return_address)
     cprint(">>> Simulated return to 0x%x" % return_address, "yellow")
+
+def hook_mem_fetch_unmapped(uc, access, address, size, value, user_data):
+    cprint("ERROR: Attempt to fetch from 0x%x" % address, "red")
+    return -1
+
+def hook_mem_read_unmapped(uc, access, address, size, value, user_data):
+    cprint("ERROR: Attempt to read from 0x%x" % address, "red")
+    return -1
+
+def hook_mem_write_unmapped(uc, access, address, size, value, user_data):
+    cprint("Attempt to write to 0x%x" % address, "red")
+    return -1
 
 # open binary
 with open("httpd", mode="rb") as file:
@@ -57,6 +77,13 @@ mu.hook_add(UC_HOOK_BLOCK, hook_block)
 
 # tracing all instructions with customized callback
 mu.hook_add(UC_HOOK_CODE, hook_code)
+
+# tracing all memory read/writes
+mu.hook_add(UC_HOOK_MEM_READ, hook_mem_read)
+mu.hook_add(UC_HOOK_MEM_WRITE, hook_mem_write)
+mu.hook_add(UC_HOOK_MEM_FETCH_UNMAPPED, hook_mem_fetch_unmapped)
+mu.hook_add(UC_HOOK_MEM_READ_UNMAPPED, hook_mem_read_unmapped)
+mu.hook_add(UC_HOOK_MEM_WRITE_UNMAPPED, hook_mem_write_unmapped)
 
 # skip memset
 mu.hook_add(UC_HOOK_CODE, hook_skip_function, None, begin=0x405df4, end=0x405df4)
