@@ -3,14 +3,13 @@ from unicorn import *
 from unicorn.mips_const import *
 from termcolor import cprint
 
-# constants are currently setup to run http_parser_main from the httpd binary from the TL-WR841N router
+# constants are currently setup to run str2num from the httpd binary from the TL-WR841N router
 CODE_ADDRESS = 0x400000
-ENTRY_POINT = 0x405da8 # address for http_parser_main()
-END_OF_FUNCTION = 0x4074c0
-MAIN_SIZE = END_OF_FUNCTION - ENTRY_POINT
-END_ADDRESS = CODE_ADDRESS + MAIN_SIZE
+ENTRY_POINT = 0x412480
+END_OF_FUNCTION = 0x4124b4
 STACK_ADDRESS = 0x00100000
 STACK_SIZE = 0x00010000
+STRING = b"123\00"
 
 # callback for tracing basic blocks
 def hook_block(uc, address, size, user_data):
@@ -72,6 +71,11 @@ mu.reg_write(UC_MIPS_REG_PC, ENTRY_POINT)
 mu.mem_map(STACK_ADDRESS, STACK_SIZE)
 mu.reg_write(UC_MIPS_REG_SP, STACK_ADDRESS + STACK_SIZE)
 
+# pass in a string as an argument to the function
+mu.mem_map(0x10000, 0x1000)
+mu.mem_write(0x10000, STRING)
+mu.reg_write(UC_MIPS_REG_A0, 0x10000)
+
 # tracing all basic blocks with customized callback
 mu.hook_add(UC_HOOK_BLOCK, hook_block)
 
@@ -86,10 +90,10 @@ mu.hook_add(UC_HOOK_MEM_READ_UNMAPPED, hook_mem_read_unmapped)
 mu.hook_add(UC_HOOK_MEM_WRITE_UNMAPPED, hook_mem_write_unmapped)
 
 # skip memset
-mu.hook_add(UC_HOOK_CODE, hook_skip_function, None, begin=0x405df4, end=0x405df4)
+# mu.hook_add(UC_HOOK_CODE, hook_skip_function, None, begin=0x405df4, end=0x405df4)
 
 # skip http_filter_fillMac
-mu.hook_add(UC_HOOK_CODE, hook_skip_function, 1, begin=0x405e0c, end=0x405e0c)
+# mu.hook_add(UC_HOOK_CODE, hook_skip_function, 1, begin=0x405e0c, end=0x405e0c)
 
 print("Starting emulation")
 try:
