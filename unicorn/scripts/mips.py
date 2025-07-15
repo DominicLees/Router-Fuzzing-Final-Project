@@ -69,9 +69,6 @@ class Emu:
         mu.mem_map(self.STACK_ADDRESS, self.STACK_SIZE)
         mu.reg_write(UC_MIPS_REG_SP, self.STACK_ADDRESS + self.STACK_SIZE)
 
-        # map memory for arguments to the function
-        mu.mem_map(0x10000, 0x1000)
-
         # tracing all basic blocks with customized callback
         mu.hook_add(UC_HOOK_BLOCK, hook_block)
 
@@ -94,9 +91,12 @@ class Emu:
         self.mu.reg_write(UC_MIPS_REG_PC, self.entry_point)
 
         # TODO: Allow multiple arguments to be passed
-        # pass in a string as an argument to the function
-        self.mu.mem_write(0x10000, arg)
-        self.mu.reg_write(UC_MIPS_REG_A0, 0x10000)
+        if arg:
+            # map memory for arguments to the function
+            self.mu.mem_map(0x10000, 0x1000)
+            # pass in a string as an argument to the function
+            self.mu.mem_write(0x10000, arg)
+            self.mu.reg_write(UC_MIPS_REG_A0, 0x10000)
 
         result = 0
         print("Starting emulation")
