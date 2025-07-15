@@ -86,8 +86,8 @@ class Emu:
         mu.hook_add(UC_HOOK_MEM_WRITE_UNMAPPED, hook_mem_write_unmapped)
         self.mu = mu
 
-    def run(self, arg):
-        if hasattr(self, "mu") == False:
+    def run(self, arg, reset=True):
+        if hasattr(self, "mu") == False or reset:
             self.setup()
 
         # set program counter to start of program
