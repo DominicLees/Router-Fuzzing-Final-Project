@@ -101,6 +101,7 @@ class Emu:
             # pass in a string as an argument to the function
             self.mu.mem_write(0x10000, arg)
             self.mu.reg_write(UC_MIPS_REG_A0, 0x10000)
+            print("Set A0 to %s" % str(arg))
 
         result = 0
         print("Starting emulation")
