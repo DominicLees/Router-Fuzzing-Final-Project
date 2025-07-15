@@ -48,9 +48,10 @@ class Emu:
     STACK_ADDRESS = 0x00100000
     STACK_SIZE = 0x00010000
 
-    def __init__(self, binary, entry_point, end_of_function):
+    def __init__(self, binary, entry_point, end_of_function, debug=False):
         self.entry_point = entry_point
         self.end_of_function = end_of_function
+        self.debug = debug
         # open binary
         with open(binary, mode="rb") as file:
             self.binary_data = file.read()
@@ -69,15 +70,18 @@ class Emu:
         mu.mem_map(self.STACK_ADDRESS, self.STACK_SIZE)
         mu.reg_write(UC_MIPS_REG_SP, self.STACK_ADDRESS + self.STACK_SIZE)
 
-        # tracing all basic blocks with customized callback
-        mu.hook_add(UC_HOOK_BLOCK, hook_block)
+        if self.debug:
+            # tracing all basic blocks with customized callback
+            mu.hook_add(UC_HOOK_BLOCK, hook_block)
 
-        # tracing all instructions with customized callback
-        mu.hook_add(UC_HOOK_CODE, hook_code)
+            # tracing all instructions with customized callback
+            mu.hook_add(UC_HOOK_CODE, hook_code)
 
-        # tracing all memory read/writes
-        mu.hook_add(UC_HOOK_MEM_READ, hook_mem_read)
-        mu.hook_add(UC_HOOK_MEM_WRITE, hook_mem_write)
+            # tracing all memory read/writes
+            mu.hook_add(UC_HOOK_MEM_READ, hook_mem_read)
+            mu.hook_add(UC_HOOK_MEM_WRITE, hook_mem_write)
+
+        # trace unmapped memory accesses
         mu.hook_add(UC_HOOK_MEM_FETCH_UNMAPPED, hook_mem_fetch_unmapped)
         mu.hook_add(UC_HOOK_MEM_READ_UNMAPPED, hook_mem_read_unmapped)
         mu.hook_add(UC_HOOK_MEM_WRITE_UNMAPPED, hook_mem_write_unmapped)
