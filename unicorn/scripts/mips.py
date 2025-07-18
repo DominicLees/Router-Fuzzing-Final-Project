@@ -3,6 +3,13 @@ from unicorn import *
 from unicorn.mips_const import *
 from termcolor import cprint
 
+ARGUMENT_REGISTERS = [
+    UC_MIPS_REG_A0,
+    UC_MIPS_REG_A1,
+    UC_MIPS_REG_A2,
+    UC_MIPS_REG_A3
+]
+
 # callback for tracing basic blocks
 def hook_block(uc, address, size, user_data):
     print(">>> Tracing basic block at 0x%x, block size = 0x%x" % (address, size))
@@ -87,21 +94,42 @@ class Emu:
         mu.hook_add(UC_HOOK_MEM_WRITE_UNMAPPED, hook_mem_write_unmapped)
         self.mu = mu
 
-    def run(self, arg, reset=True):
+    def run(self, args, reset=True):
         if hasattr(self, "mu") == False or reset:
             self.setup()
 
         # set program counter to start of program
         self.mu.reg_write(UC_MIPS_REG_PC, self.entry_point)
 
-        # TODO: Allow multiple arguments to be passed
-        if arg:
+        if args:
+            # convert singular argument to a list
+            if type(args) is not list:
+                args = [args]
+            # currently only supports passing 4 arguments via the registers, any additional arguments would have to go on the stack, can be added later if needed
+            elif len(args) > 4:
+                raise Exception("Maximum of 4 arguments can be passed into a run")
+
             # map memory for arguments to the function
-            self.mu.mem_map(0x10000, 0x1000)
-            # pass in a string as an argument to the function
-            self.mu.mem_write(0x10000, arg)
-            self.mu.reg_write(UC_MIPS_REG_A0, 0x10000)
-            print("Set A0 to %s" % str(arg))
+            current_address = 0x10000
+            self.mu.mem_map(current_address, 0x1000)
+
+            # set each register to an argument
+            i = 0
+            for arg in args:
+                # convert strings to bytes
+                if type(arg) is str:
+                    arg = bytes(arg, "ascii") + b'\00'
+                # write string arguments to memory and set the register value to point to the string
+                if type(arg) is bytes:
+                    self.mu.mem_write(current_address, arg)
+                    self.mu.reg_write(ARGUMENT_REGISTERS[i], current_address)
+                    print("Wrote %s to 0x%x" % (arg, current_address))
+                    current_address += len(arg)
+                # numbers can be written straight into the registers
+                else:
+                    self.mu.reg_write(ARGUMENT_REGISTERS[i], arg)
+                print("Set A%d to 0x%x" % (i, self.mu.reg_read(ARGUMENT_REGISTERS[i])))
+                i += 1
 
         result = 0
         print("Starting emulation")
