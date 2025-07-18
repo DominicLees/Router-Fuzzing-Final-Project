@@ -55,15 +55,29 @@ class Emu:
     STACK_ADDRESS = 0x00100000
     STACK_SIZE = 0x00010000
 
-    def __init__(self, binary, entry_point, end_of_function, debug=False):
+    def __init__(
+        self, 
+        binary: str, 
+        entry_point: int, 
+        end_of_function: int, 
+        debug=False
+    ):
+        """
+        Args:
+            binary (str): file path to the binary to be loaded into the emulator
+            entry_point (int): the address in the binary where emulation will start
+            end_of_function (int): the address in the binary where emlation will end once reached
+            debug (bool, optional): Enabled additional prints of all instruction, block and memory read/write traces. Defaults to False.
+        """
         self.entry_point = entry_point
         self.end_of_function = end_of_function
         self.debug = debug
-        # open binary
+        # read raw binary data from file
         with open(binary, mode="rb") as file:
             self.binary_data = file.read()
 
     def setup(self):
+        """Creates a new emulator with the specified state. Overrides any existing emulator."""
         # initialise emulator in MIPS32 + EL mode
         mu = Uc(UC_ARCH_MIPS, UC_MODE_MIPS32 + UC_MODE_LITTLE_ENDIAN)
 
@@ -94,7 +108,23 @@ class Emu:
         mu.hook_add(UC_HOOK_MEM_WRITE_UNMAPPED, hook_mem_write_unmapped)
         self.mu = mu
 
-    def run(self, args, reset=True):
+    def run(
+        self, 
+        args: int | str | bytes | list[int | str | bytes], 
+        reset=True
+    ) -> int:
+        """Starts emulation at the object's entry_point value
+
+        Args:
+            args (int | str | bytes | list[int  |  str  |  bytes]): Values to be stored in the argument registers (A0 to A3). Strings are converted to bytes and given a null terminator. Bytes are stored in memory and a pointer to it is stored in the register.
+            reset (bool, optional): Should the state of the CPU be reset before emulation is started. Defaults to True.
+
+        Raises:
+            Exception: if length of args is greater than 4
+
+        Returns:
+            int: -1 if there was an error during emulation, otherwise the return value stored in the V0 register after emulation finished
+        """
         if hasattr(self, "mu") == False or reset:
             self.setup()
 
