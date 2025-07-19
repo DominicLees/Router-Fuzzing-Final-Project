@@ -161,11 +161,11 @@ class Emu:
                 print("Set A%d to 0x%x" % (i, self.mu.reg_read(ARGUMENT_REGISTERS[i])))
                 i += 1
 
-        result = 0
         print("Starting emulation")
         try:
             self.mu.emu_start(self.mu.reg_read(UC_MIPS_REG_PC), self.end_of_function)
-            cprint("Return value: %d" % self.mu.reg_read(UC_MIPS_REG_V0), "green")
+            result = self.mu.reg_read(UC_MIPS_REG_V0)
+            cprint("Return value: %d" % result, "green")
         except UcError as e:
             cprint("ERROR: %s" % e, "red")
             result = -1
