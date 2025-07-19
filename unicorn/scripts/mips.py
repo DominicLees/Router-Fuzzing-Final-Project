@@ -110,8 +110,8 @@ class Emu:
 
     def run(
         self, 
-        args: int | str | bytes | list[int | str | bytes], 
-        reset=True
+        args: int | str | bytes | list[int | str | bytes] = None, 
+        reset = True
     ) -> int:
         """Starts emulation at the object's entry_point value
 
