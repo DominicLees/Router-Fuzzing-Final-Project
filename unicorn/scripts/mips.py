@@ -2,6 +2,7 @@
 from unicorn import *
 from unicorn.mips_const import *
 from termcolor import cprint
+from collections.abc import Callable
 
 ARGUMENT_REGISTERS = [
     UC_MIPS_REG_A0,
@@ -30,7 +31,7 @@ def hook_mem_write(uc, access, address, size, value, user_data):
 def hook_skip_function(uc, address, size, user_data):
     cprint(">>> Hooked function at 0x%x" % address, "yellow")
     # set return value
-    if user_data:
+    if user_data != None:
         uc.reg_write(UC_MIPS_REG_V0, user_data)
         cprint(">>> Set return value to %d" % user_data, "yellow")
     # set PC to return address
@@ -54,6 +55,7 @@ class Emu:
     CODE_ADDRESS = 0x400000
     STACK_ADDRESS = 0x00100000
     STACK_SIZE = 0x00010000
+    hooks = [] # TODO: make a class for hooks instead of using tuples
 
     def __init__(
         self, 
@@ -106,7 +108,37 @@ class Emu:
         mu.hook_add(UC_HOOK_MEM_FETCH_UNMAPPED, hook_mem_fetch_unmapped)
         mu.hook_add(UC_HOOK_MEM_READ_UNMAPPED, hook_mem_read_unmapped)
         mu.hook_add(UC_HOOK_MEM_WRITE_UNMAPPED, hook_mem_write_unmapped)
+
+        # add additonally defined hooks
+        for hook in self.hooks:
+            mu.hook_add(UC_HOOK_CODE, hook[1], user_data=hook[2], begin=hook[0], end=hook[0])
         self.mu = mu
+
+    def add_hook(
+        self,
+        address: int,
+        function: Callable,
+    ):
+        """Adds a hook to the emulator's list of hooks. Hooks are set when Emu.setup() is called. 
+
+        Args:
+            address (int): The address in the binary the hook is set to
+            function (Callable): A function to be called when the emulator reaches the specified address
+        """
+        self.hooks.append((address, function, 0))
+
+    def add_function_skip_hook(
+        self,
+        address: int,
+        return_value: int = None
+    ):
+        """Adds a hook to skip a function at the specified address
+
+        Args:
+            address (int): The address of the function in the binary to skip
+            return_value (int, optional): The value to be set to the return register (V0). Defaults to None.
+        """
+        self.hooks.append((address, hook_skip_function, return_value))
 
     def run(
         self, 
