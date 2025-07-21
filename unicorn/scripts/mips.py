@@ -173,7 +173,7 @@ class Emu:
         """Starts emulation at the object's entry_point value
 
         Args:
-            args (int | str | bytes | list[int  |  str  |  bytes]): Values to be stored in the argument registers (A0 to A3). Strings are converted to bytes and given a null terminator. Bytes are stored in memory and a pointer to it is stored in the register.
+            args (int | str | bytes | list[int  |  str  |  bytes]): Values to be stored in the argument registers (A0 to A3). Strings are converted to bytes and given a null terminator. Bytes are stored in memory and a pointer to it is stored in the register. Max number of arguments is 4.
             reset (bool, optional): Should the state of the CPU be reset before emulation is started. Defaults to True.
 
         Raises:
