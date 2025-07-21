@@ -53,7 +53,7 @@ def hook_mem_read_unmapped(uc: Uc, access: int, address: int, size: int, value: 
     return -1
 
 def hook_mem_write_unmapped(uc: Uc, access: int, address: int, size: int, value: int, user_data):
-    cprint("Attempt to write to 0x%x" % address, "red")
+    cprint("ERROR: Attempt to write to 0x%x" % address, "red")
     return -1
 
 class Hook:
