@@ -1,4 +1,9 @@
-# based on https://github.com/unicorn-engine/unicorn/blob/master/bindings/python/tests/test_mips.py
+"""Unicorn wrapper for MIPS binaries
+
+Provides the Emu class for setting up and performing emulation.
+
+Based on https://github.com/unicorn-engine/unicorn/blob/master/bindings/python/tests/test_mips.py
+"""
 from unicorn import *
 from unicorn.mips_const import *
 from termcolor import cprint
@@ -70,6 +75,7 @@ class Hook:
         self.user_data = user_data
 
 class Emu:
+    """Creates a unicorn engine instance for MIPS EL emulation"""
     CODE_ADDRESS = 0x400000
     STACK_ADDRESS = 0x00100000
     STACK_SIZE = 0x00010000
