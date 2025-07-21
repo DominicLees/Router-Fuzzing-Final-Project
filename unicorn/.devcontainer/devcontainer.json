@@ -1,0 +1,15 @@
+// Used by the VS code dev containers extension
+// Allows for development inside the unicorn container which means you don't have to resolve the unicorn dependencies yourself
+{
+	"name": "Unicorn Dockerfile",
+	"build": {
+		"context": "..",
+		"dockerfile": "../Dockerfile"
+	},
+
+	"customizations": {
+		"vscode": {
+			"extensions": ["ms-python.vscode-pylance"]
+		}
+  	}
+}
