@@ -51,11 +51,29 @@ def hook_mem_write_unmapped(uc, access, address, size, value, user_data):
     cprint("Attempt to write to 0x%x" % address, "red")
     return -1
 
+class Hook:
+    """Used by the Emu class to store the data needed to set a hook in unicorn.
+    
+    Attributes:
+        address (int): The address in the binary the hook is set to
+        function (Callable): The function called when the emulator reaches the specified address
+        user_data (any, optional): Data passed to the function when it is called
+    """
+    def __init__(
+        self, 
+        address: int,
+        function: Callable[[any, any, int, int, int, any], int] | Callable[[any, int, int, any], int],
+        user_data = None
+    ):
+        self.address = address
+        self.function = function
+        self.user_data = user_data
+
 class Emu:
     CODE_ADDRESS = 0x400000
     STACK_ADDRESS = 0x00100000
     STACK_SIZE = 0x00010000
-    hooks = [] # TODO: make a class for hooks instead of using tuples
+    hooks: list[Hook] = []
 
     def __init__(
         self, 
@@ -111,13 +129,14 @@ class Emu:
 
         # add additonally defined hooks
         for hook in self.hooks:
-            mu.hook_add(UC_HOOK_CODE, hook[1], user_data=hook[2], begin=hook[0], end=hook[0])
+            mu.hook_add(UC_HOOK_CODE, hook.function, user_data=hook.user_data, begin=hook.address, end=hook.address)
         self.mu = mu
 
     def add_hook(
         self,
         address: int,
-        function: Callable,
+        function: Callable[[any, any, int, int, int, any], int] | Callable[[any, int, int, any], int],
+        user_data = None
     ):
         """Adds a hook to the emulator's list of hooks. Hooks are set when Emu.setup() is called. 
 
@@ -125,7 +144,7 @@ class Emu:
             address (int): The address in the binary the hook is set to
             function (Callable): A function to be called when the emulator reaches the specified address
         """
-        self.hooks.append((address, function, 0))
+        self.hooks.append(Hook(address, function, user_data))
 
     def add_function_skip_hook(
         self,
@@ -138,7 +157,7 @@ class Emu:
             address (int): The address of the function in the binary to skip
             return_value (int, optional): The value to be set to the return register (V0). Defaults to None.
         """
-        self.hooks.append((address, hook_skip_function, return_value))
+        self.hooks.append(Hook(address, hook_skip_function, return_value))
 
     def run(
         self, 
