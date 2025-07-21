@@ -12,23 +12,23 @@ ARGUMENT_REGISTERS = [
 ]
 
 # callback for tracing basic blocks
-def hook_block(uc, address, size, user_data):
+def hook_block(uc: Uc, address: int, size: int, user_data):
     print(">>> Tracing basic block at 0x%x, block size = 0x%x" % (address, size))
 
 # callback for tracing instructions
-def hook_code(uc, address, size, user_data):
+def hook_code(uc: Uc, address: int, size: int, user_data):
     print(">>> Tracing instruction at 0x%x, instruction size = 0x%x" % (address, size))
 
 # callback for tracing memory reads
-def hook_mem_read(uc, access, address, size, value, user_data):
+def hook_mem_read(uc: Uc, access: int, address: int, size: int, value: int, user_data):
     cprint(">>> Reading memory at 0x%x, size = 0x%x" % (address, size), "blue")
 
 # callback for tracing memory writes
-def hook_mem_write(uc, access, address, size, value, user_data):
+def hook_mem_write(uc: Uc, access: int, address: int, size: int, value: int, user_data):
     cprint(">>> Writing to memory at 0x%x, size = 0x%x, value = %d" % (address, size, value), "cyan")
 
 # callback for skipping function calls
-def hook_skip_function(uc, address, size, user_data):
+def hook_skip_function(uc: Uc, address: int, size: int, user_data):
     cprint(">>> Hooked function at 0x%x" % address, "yellow")
     # set return value
     if user_data != None:
@@ -39,15 +39,15 @@ def hook_skip_function(uc, address, size, user_data):
     uc.reg_write(UC_MIPS_REG_PC, return_address)
     cprint(">>> Simulated return to 0x%x" % return_address, "yellow")
 
-def hook_mem_fetch_unmapped(uc, access, address, size, value, user_data):
+def hook_mem_fetch_unmapped(uc: Uc, access: int, address: int, size: int, value: int, user_data):
     cprint("ERROR: Attempt to fetch from 0x%x" % address, "red")
     return -1
 
-def hook_mem_read_unmapped(uc, access, address, size, value, user_data):
+def hook_mem_read_unmapped(uc: Uc, access: int, address: int, size: int, value: int, user_data):
     cprint("ERROR: Attempt to read from 0x%x" % address, "red")
     return -1
 
-def hook_mem_write_unmapped(uc, access, address, size, value, user_data):
+def hook_mem_write_unmapped(uc: Uc, access: int, address: int, size: int, value: int, user_data):
     cprint("Attempt to write to 0x%x" % address, "red")
     return -1
 
@@ -62,7 +62,7 @@ class Hook:
     def __init__(
         self, 
         address: int,
-        function: Callable[[any, any, int, int, int, any], int] | Callable[[any, int, int, any], int],
+        function: Callable[[Uc, int, int, int, int, any], any] | Callable[[Uc, int, int, any], any],
         user_data = None
     ):
         self.address = address
@@ -135,7 +135,7 @@ class Emu:
     def add_hook(
         self,
         address: int,
-        function: Callable[[any, any, int, int, int, any], int] | Callable[[any, int, int, any], int],
+        function: Callable[[Uc, int, int, int, int, any], any] | Callable[[Uc, int, int, any], any],
         user_data = None
     ):
         """Adds a hook to the emulator's list of hooks. Hooks are set when Emu.setup() is called. 
