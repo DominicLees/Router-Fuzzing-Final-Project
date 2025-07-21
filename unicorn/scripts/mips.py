@@ -16,6 +16,21 @@ ARGUMENT_REGISTERS = [
     UC_MIPS_REG_A3
 ]
 
+class Hook:
+    """Used by the Emu class to store the data needed to set a hook in unicorn.
+    
+    Attributes:
+        address (int): The address in the binary the hook is set to
+        function (Callable): The function called when the emulator reaches the specified address
+    """
+    def __init__(
+        self, 
+        address: int,
+        function: Callable[[Uc, int, int, int, int, any], any] | Callable[[Uc, int, int, any], any],
+    ):
+        self.address = address
+        self.function = function
+
 # callback for tracing basic blocks
 def hook_block(uc: Uc, address: int, size: int, user_data):
     print(">>> Tracing basic block at 0x%x, block size = 0x%x" % (address, size))
@@ -44,6 +59,15 @@ def hook_skip_function(uc: Uc, address: int, size: int, user_data):
     uc.reg_write(UC_MIPS_REG_PC, return_address)
     cprint(">>> Simulated return to 0x%x" % return_address, "yellow")
 
+def hook_wrapper(uc: Uc, address: int, size: int, user_data: Hook):
+    cprint(">>> Hooked function at 0x%x" % address, "yellow")
+    result = user_data.function(uc, address, size, user_data)
+    # set PC to return address
+    return_address = address + 4
+    uc.reg_write(UC_MIPS_REG_PC, return_address)
+    cprint(">>> Simulated return to 0x%x" % return_address, "yellow")
+    return result
+
 def hook_mem_fetch_unmapped(uc: Uc, access: int, address: int, size: int, value: int, user_data):
     cprint("ERROR: Attempt to fetch from 0x%x" % address, "red")
     return -1
@@ -55,24 +79,6 @@ def hook_mem_read_unmapped(uc: Uc, access: int, address: int, size: int, value: 
 def hook_mem_write_unmapped(uc: Uc, access: int, address: int, size: int, value: int, user_data):
     cprint("ERROR: Attempt to write to 0x%x" % address, "red")
     return -1
-
-class Hook:
-    """Used by the Emu class to store the data needed to set a hook in unicorn.
-    
-    Attributes:
-        address (int): The address in the binary the hook is set to
-        function (Callable): The function called when the emulator reaches the specified address
-        user_data (any, optional): Data passed to the function when it is called
-    """
-    def __init__(
-        self, 
-        address: int,
-        function: Callable[[Uc, int, int, int, int, any], any] | Callable[[Uc, int, int, any], any],
-        user_data = None
-    ):
-        self.address = address
-        self.function = function
-        self.user_data = user_data
 
 class Emu:
     """Creates a unicorn engine instance for MIPS EL emulation"""
@@ -135,14 +141,13 @@ class Emu:
 
         # add additonally defined hooks
         for hook in self.hooks:
-            mu.hook_add(UC_HOOK_CODE, hook.function, user_data=hook.user_data, begin=hook.address, end=hook.address)
+            mu.hook_add(UC_HOOK_CODE, hook_wrapper, user_data=hook, begin=hook.address, end=hook.address)
         self.mu = mu
 
     def add_hook(
         self,
         address: int,
-        function: Callable[[Uc, int, int, int, int, any], any] | Callable[[Uc, int, int, any], any],
-        user_data = None
+        function: Callable[[Uc, int, int, int, int, any], any] | Callable[[Uc, int, int, any], any]
     ):
         """Adds a hook to the emulator's list of hooks. Hooks are set when Emu.setup() is called. 
 
@@ -150,20 +155,7 @@ class Emu:
             address (int): The address in the binary the hook is set to
             function (Callable): A function to be called when the emulator reaches the specified address
         """
-        self.hooks.append(Hook(address, function, user_data))
-
-    def add_function_skip_hook(
-        self,
-        address: int,
-        return_value: int = None
-    ):
-        """Adds a hook to skip a function at the specified address
-
-        Args:
-            address (int): The address of the function in the binary to skip
-            return_value (int, optional): The value to be set to the return register (V0). Defaults to None.
-        """
-        self.hooks.append(Hook(address, hook_skip_function, return_value))
+        self.hooks.append(Hook(address, function))
 
     def run(
         self, 
