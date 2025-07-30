@@ -17,7 +17,13 @@ def hook_memset(uc: Uc, address: int, size: int, user_data):
     uc.mem_write(start_address, bytes(char * length, "ascii"))
     print(">>> Emulated memset: Wrote %d bytes of 0x%x between 0x%x and 0x%x" % (length, num, start_address, start_address + length))
 
+# skip http_filter_fillMac
+def hook_filter_fillMac(uc: Uc, address: int, size: int, user_data):
+    uc.reg_write(UC_MIPS_REG_V0, 0)
+    print(">>> Set return register to 0")
+
 # setup and run emulation
 emu = Emu("/workspaces/dxl184/unicorn/includes/httpd", 0x405da8, 0x4074c0, True)
 emu.add_hook(0x405df4, hook_memset)
+emu.add_hook(0x405e0c, hook_filter_fillMac)
 emu.run("Hello world")
