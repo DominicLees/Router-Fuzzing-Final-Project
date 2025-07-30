@@ -190,7 +190,7 @@ class Emu:
 
             # map memory for arguments to the function
             current_address = 0x10000
-            self.mu.mem_map(current_address, 0x1000)
+            self.mu.mem_map(current_address, 0x10000)
 
             # set each register to an argument
             i = 0
