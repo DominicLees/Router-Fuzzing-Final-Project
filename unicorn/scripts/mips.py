@@ -59,13 +59,15 @@ def hook_skip_function(uc: Uc, address: int, size: int, user_data):
     uc.reg_write(UC_MIPS_REG_PC, return_address)
     cprint(">>> Simulated return to 0x%x" % return_address, "yellow")
 
+# wrapper function for user defined hooks
 def hook_wrapper(uc: Uc, address: int, size: int, user_data: Hook):
     cprint(">>> Hooked function at 0x%x" % address, "yellow")
+    # call user defined hook function
     result = user_data.function(uc, address, size, user_data)
-    # set PC to return address
-    return_address = address + 4
-    uc.reg_write(UC_MIPS_REG_PC, return_address)
-    cprint(">>> Simulated return to 0x%x" % return_address, "yellow")
+    # if user function did not change the PC, set it to the next instruction
+    if uc.reg_read(UC_MIPS_REG_PC) == address:
+        uc.reg_write(UC_MIPS_REG_PC, address + 4)
+    cprint(">>> Simulated return to 0x%x" % uc.reg_read(UC_MIPS_REG_PC), "yellow")
     return result
 
 def hook_mem_fetch_unmapped(uc: Uc, access: int, address: int, size: int, value: int, user_data):
