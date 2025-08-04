@@ -113,38 +113,38 @@ class Emu:
     def setup(self):
         """Creates a new emulator with the specified state. Overrides any existing emulator."""
         # initialise emulator in MIPS32 + EL mode
-        mu = Uc(UC_ARCH_MIPS, UC_MODE_MIPS32 + UC_MODE_LITTLE_ENDIAN)
+        uc = Uc(UC_ARCH_MIPS, UC_MODE_MIPS32 + UC_MODE_LITTLE_ENDIAN)
 
         # map 2MB memory for this emulation
-        mu.mem_map(self.CODE_ADDRESS, 2 * 1024 * 1024)
+        uc.mem_map(self.CODE_ADDRESS, 2 * 1024 * 1024)
 
         # write machine code to be emulated to memory
-        mu.mem_write(self.CODE_ADDRESS, self.binary_data)
+        uc.mem_write(self.CODE_ADDRESS, self.binary_data)
 
         # setup the stack
-        mu.mem_map(self.STACK_ADDRESS, self.STACK_SIZE)
-        mu.reg_write(UC_MIPS_REG_SP, self.STACK_ADDRESS + self.STACK_SIZE)
+        uc.mem_map(self.STACK_ADDRESS, self.STACK_SIZE)
+        uc.reg_write(UC_MIPS_REG_SP, self.STACK_ADDRESS + self.STACK_SIZE)
 
         if self.debug:
             # tracing all basic blocks with customized callback
-            mu.hook_add(UC_HOOK_BLOCK, hook_block)
+            uc.hook_add(UC_HOOK_BLOCK, hook_block)
 
             # tracing all instructions with customized callback
-            mu.hook_add(UC_HOOK_CODE, hook_code)
+            uc.hook_add(UC_HOOK_CODE, hook_code)
 
             # tracing all memory read/writes
-            mu.hook_add(UC_HOOK_MEM_READ, hook_mem_read)
-            mu.hook_add(UC_HOOK_MEM_WRITE, hook_mem_write)
+            uc.hook_add(UC_HOOK_MEM_READ, hook_mem_read)
+            uc.hook_add(UC_HOOK_MEM_WRITE, hook_mem_write)
 
         # trace unmapped memory accesses
-        mu.hook_add(UC_HOOK_MEM_FETCH_UNMAPPED, hook_mem_fetch_unmapped)
-        mu.hook_add(UC_HOOK_MEM_READ_UNMAPPED, hook_mem_read_unmapped)
-        mu.hook_add(UC_HOOK_MEM_WRITE_UNMAPPED, hook_mem_write_unmapped)
+        uc.hook_add(UC_HOOK_MEM_FETCH_UNMAPPED, hook_mem_fetch_unmapped)
+        uc.hook_add(UC_HOOK_MEM_READ_UNMAPPED, hook_mem_read_unmapped)
+        uc.hook_add(UC_HOOK_MEM_WRITE_UNMAPPED, hook_mem_write_unmapped)
 
         # add additonally defined hooks
         for hook in self.hooks:
-            mu.hook_add(UC_HOOK_CODE, hook_wrapper, user_data=hook, begin=hook.address, end=hook.address)
-        self.mu = mu
+            uc.hook_add(UC_HOOK_CODE, hook_wrapper, user_data=hook, begin=hook.address, end=hook.address)
+        self.uc = uc
 
     def add_hook(
         self,
@@ -176,11 +176,11 @@ class Emu:
         Returns:
             int: -1 if there was an error during emulation, otherwise the return value stored in the V0 register after emulation finished
         """
-        if hasattr(self, "mu") == False or reset:
+        if hasattr(self, "uc") == False or reset:
             self.setup()
 
         # set program counter to start of program
-        self.mu.reg_write(UC_MIPS_REG_PC, self.entry_point)
+        self.uc.reg_write(UC_MIPS_REG_PC, self.entry_point)
 
         if args:
             # convert singular argument to a list
@@ -190,9 +190,9 @@ class Emu:
             elif len(args) > 4:
                 raise Exception("Maximum of 4 arguments can be passed into a run")
 
-            # map memory for arguments to the function
+            # map memory for function arguments
             current_address = 0x10000
-            self.mu.mem_map(current_address, 0x10000)
+            self.uc.mem_map(current_address, 0x10000)
 
             # set each register to an argument
             i = 0
@@ -202,20 +202,20 @@ class Emu:
                     arg = bytes(arg, "ascii") + b'\00'
                 # write string arguments to memory and set the register value to point to the string
                 if type(arg) is bytes:
-                    self.mu.mem_write(current_address, arg)
-                    self.mu.reg_write(ARGUMENT_REGISTERS[i], current_address)
+                    self.uc.mem_write(current_address, arg)
+                    self.uc.reg_write(ARGUMENT_REGISTERS[i], current_address)
                     print("Wrote %s to 0x%x" % (arg, current_address))
                     current_address += len(arg)
                 # numbers can be written straight into the registers
                 else:
-                    self.mu.reg_write(ARGUMENT_REGISTERS[i], arg)
-                print("Set A%d to 0x%x" % (i, self.mu.reg_read(ARGUMENT_REGISTERS[i])))
+                    self.uc.reg_write(ARGUMENT_REGISTERS[i], arg)
+                print("Set A%d to 0x%x" % (i, self.uc.reg_read(ARGUMENT_REGISTERS[i])))
                 i += 1
 
         print("Starting emulation")
         try:
-            self.mu.emu_start(self.mu.reg_read(UC_MIPS_REG_PC), self.end_of_function)
-            result = self.mu.reg_read(UC_MIPS_REG_V0)
+            self.uc.emu_start(self.uc.reg_read(UC_MIPS_REG_PC), self.end_of_function)
+            result = self.uc.reg_read(UC_MIPS_REG_V0)
             cprint("Return value: %d" % result, "green")
         except UcError as e:
             cprint("ERROR: %s" % e, "red")
