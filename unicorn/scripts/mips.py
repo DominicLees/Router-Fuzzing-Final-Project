@@ -36,8 +36,11 @@ def hook_block(uc: Uc, address: int, size: int, user_data):
     print(">>> Tracing basic block at 0x%x, block size = 0x%x" % (address, size))
 
 # callback for tracing instructions
-def hook_code(uc: Uc, address: int, size: int, user_data):
+def hook_print_code(uc: Uc, address: int, size: int, user_data):
     print(">>> Tracing instruction at 0x%x, instruction size = 0x%x" % (address, size))
+
+def hook_count_instruction(uc: Uc, address: int, size: int, user_data: "Emu"):
+    user_data.instructions_executed += 1
 
 # callback for tracing memory reads
 def hook_mem_read(uc: Uc, access: int, address: int, size: int, value: int, user_data):
@@ -46,18 +49,6 @@ def hook_mem_read(uc: Uc, access: int, address: int, size: int, value: int, user
 # callback for tracing memory writes
 def hook_mem_write(uc: Uc, access: int, address: int, size: int, value: int, user_data):
     cprint(">>> Writing to memory at 0x%x, size = 0x%x, value = %d" % (address, size, value), "cyan")
-
-# callback for skipping function calls
-def hook_skip_function(uc: Uc, address: int, size: int, user_data):
-    cprint(">>> Hooked function at 0x%x" % address, "yellow")
-    # set return value
-    if user_data != None:
-        uc.reg_write(UC_MIPS_REG_V0, user_data)
-        cprint(">>> Set return value to %d" % user_data, "yellow")
-    # set PC to return address
-    return_address = address + 4
-    uc.reg_write(UC_MIPS_REG_PC, return_address)
-    cprint(">>> Simulated return to 0x%x" % return_address, "yellow")
 
 # wrapper function for user defined hooks
 def hook_wrapper(uc: Uc, address: int, size: int, user_data: Hook):
@@ -125,12 +116,18 @@ class Emu:
         uc.mem_map(self.STACK_ADDRESS, self.STACK_SIZE)
         uc.reg_write(UC_MIPS_REG_SP, self.STACK_ADDRESS + self.STACK_SIZE)
 
+        # set instruction counter
+        self.instructions_executed = 0
+
+        # add hooks
+        uc.hook_add(UC_HOOK_CODE, hook_count_instruction, self)
+
         if self.debug:
             # tracing all basic blocks with customized callback
             uc.hook_add(UC_HOOK_BLOCK, hook_block)
 
             # tracing all instructions with customized callback
-            uc.hook_add(UC_HOOK_CODE, hook_code)
+            uc.hook_add(UC_HOOK_CODE, hook_print_code)
 
             # tracing all memory read/writes
             uc.hook_add(UC_HOOK_MEM_READ, hook_mem_read)
@@ -141,7 +138,7 @@ class Emu:
         uc.hook_add(UC_HOOK_MEM_READ_UNMAPPED, hook_mem_read_unmapped)
         uc.hook_add(UC_HOOK_MEM_WRITE_UNMAPPED, hook_mem_write_unmapped)
 
-        # add additonally defined hooks
+        # add user defined hooks
         for hook in self.hooks:
             uc.hook_add(UC_HOOK_CODE, hook_wrapper, user_data=hook, begin=hook.address, end=hook.address)
         self.uc = uc
@@ -223,5 +220,5 @@ class Emu:
             cprint("ERROR: %s" % e, "red")
             result = -1
 
-        print("Finished emulation")
+        print("Finished emulation. Instructions executed = %d" % self.instructions_executed)
         return result
