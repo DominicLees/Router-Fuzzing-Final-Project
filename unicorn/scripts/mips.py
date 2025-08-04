@@ -206,6 +206,8 @@ class Emu:
                     self.uc.reg_write(ARGUMENT_REGISTERS[i], current_address)
                     print("Wrote %s to 0x%x" % (arg, current_address))
                     current_address += len(arg)
+                    # round current_address to the next multiple of 4
+                    current_address += 4 - (current_address % 4)
                 # numbers can be written straight into the registers
                 else:
                     self.uc.reg_write(ARGUMENT_REGISTERS[i], arg)
