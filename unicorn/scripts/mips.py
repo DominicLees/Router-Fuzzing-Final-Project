@@ -22,14 +22,17 @@ class Hook:
     Attributes:
         address (int): The address in the binary the hook is set to
         function (Callable): The function called when the emulator reaches the specified address
+        user_data (Any): Data passed to the function as an argument
     """
     def __init__(
         self, 
         address: int,
         function: Callable[[Uc, int, int, int, int, any], any] | Callable[[Uc, int, int, any], any],
+        user_data = None
     ):
         self.address = address
         self.function = function
+        self.user_data = user_data
 
 # callback for tracing basic blocks
 def hook_block(uc: Uc, address: int, size: int, user_data):
@@ -54,7 +57,7 @@ def hook_mem_write(uc: Uc, access: int, address: int, size: int, value: int, use
 def hook_wrapper(uc: Uc, address: int, size: int, user_data: Hook):
     cprint(">>> Hooked function at 0x%x" % address, "yellow")
     # call user defined hook function
-    result = user_data.function(uc, address, size, user_data)
+    result = user_data.function(uc, address, size, user_data.user_data)
     # if user function did not change the PC, set it to the next instruction
     if uc.reg_read(UC_MIPS_REG_PC) == address:
         uc.reg_write(UC_MIPS_REG_PC, address + 4)
@@ -146,15 +149,17 @@ class Emu:
     def add_hook(
         self,
         address: int,
-        function: Callable[[Uc, int, int, int, int, any], any] | Callable[[Uc, int, int, any], any]
+        function: Callable[[Uc, int, int, int, int, any], any] | Callable[[Uc, int, int, any], any],
+        user_data = None
     ):
         """Adds a hook to the emulator's list of hooks. Hooks are set when Emu.setup() is called. 
 
         Args:
             address (int): The address in the binary the hook is set to
             function (Callable): A function to be called when the emulator reaches the specified address
+            user_data (Any): Data to be passed to the hook callback function
         """
-        self.hooks.append(Hook(address, function))
+        self.hooks.append(Hook(address, function, user_data))
 
     def run(
         self, 
