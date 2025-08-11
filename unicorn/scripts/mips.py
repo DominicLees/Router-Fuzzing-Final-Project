@@ -146,6 +146,22 @@ class Emu:
             uc.hook_add(UC_HOOK_CODE, hook_wrapper, user_data=hook, begin=hook.address, end=hook.address)
         self.uc = uc
 
+    def get_hook(
+        self,
+        address: int
+    ) -> Hook | None:
+        """Finds and returns a previously set user-defined hook for the emu
+
+        Args:
+            address (int): The address of the hook to find
+
+        Returns:
+            (Hook | None): Returns the found hook otherwise returns None
+        """
+        for hook in self.hooks:
+            if hook.address == address:
+                return hook
+
     def add_hook(
         self,
         address: int,
@@ -159,7 +175,12 @@ class Emu:
             function (Callable): A function to be called when the emulator reaches the specified address
             user_data (Any): Data to be passed to the hook callback function
         """
-        self.hooks.append(Hook(address, function, user_data))
+        hook = self.get_hook(address)
+        if hook == None:
+            self.hooks.append(Hook(address, function, user_data))
+        else:
+            hook.function = function
+            hook.user_data = user_data
 
     def run(
         self, 
@@ -174,6 +195,7 @@ class Emu:
 
         Raises:
             Exception: if length of args is greater than 4
+            UcError: when the unicorn engine raises an error
 
         Returns:
             int: -1 if there was an error during emulation, otherwise the return value stored in the V0 register after emulation finished
@@ -223,7 +245,7 @@ class Emu:
             cprint("Return value: %d" % result, "green")
         except UcError as e:
             cprint("ERROR: %s" % e, "red")
-            result = -1
+            raise e
 
         print("Finished emulation. Instructions executed = %d" % self.instructions_executed)
         return result
