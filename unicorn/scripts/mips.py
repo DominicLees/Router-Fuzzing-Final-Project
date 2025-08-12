@@ -8,6 +8,8 @@ from unicorn import *
 from unicorn.mips_const import *
 from termcolor import cprint
 from collections.abc import Callable
+import os, sys
+from datetime import datetime
 
 ARGUMENT_REGISTERS = [
     UC_MIPS_REG_A0,
@@ -15,6 +17,15 @@ ARGUMENT_REGISTERS = [
     UC_MIPS_REG_A2,
     UC_MIPS_REG_A3
 ]
+
+class HiddenPrints:
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, 'w')
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout
 
 class Hook:
     """Used by the Emu class to store the data needed to set a hook in unicorn.
@@ -249,3 +260,38 @@ class Emu:
 
         print("Finished emulation. Instructions executed = %d" % self.instructions_executed)
         return result
+    
+    def fuzz(
+        self,
+        args_generator: Callable[[], list[int | str | bytes]],
+        run_limit: int = 0,
+        pre_run_function: Callable[[Uc, list[int | str | bytes]], None] = None
+    ):
+        """Continuous calls run() on the emulator using newly generated args each time
+
+        Args:
+            args_generator (Callable[[], list[int  |  str  |  bytes]]): Function that returns an appropriate list of args. Should be different each time the function is called. 
+            run_limit (int, optional): How many times to run the emulation. If 0 is used will run until the program is killed. Defaults to 0.
+            pre_run_function (Callable[[Uc, list[int  |  str  |  bytes]], None], optional): Function called after a new set of args have been generated and before the emulation is run. Takes the Emu and the args as arguments. Defaults to None.
+        """
+        runs = 0
+        start_time = datetime.now()
+        while (True):
+            args = args_generator()
+            if type(pre_run_function) is not None:
+                pre_run_function(self, args)
+            try:
+                with HiddenPrints():
+                    self.run(args)
+            except UcError:
+                cprint("UcError raised with args: %s" % args, "red")
+                break
+            except KeyboardInterrupt:
+                break
+            
+            current_time = datetime.now()
+            runs += 1
+            os.system("clear")
+            print("Tests: %d, Fuzzing time: %s, Last args: %s" % (runs, current_time - start_time, args))
+            if runs == run_limit:
+                break
