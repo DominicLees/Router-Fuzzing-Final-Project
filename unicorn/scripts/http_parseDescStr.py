@@ -22,9 +22,9 @@ def hook_sscanf(uc: Uc, address: int, size: int, user_data: str):
     SP = uc.reg_read(UC_MIPS_REG_SP)
     # first 6 numbers stored consecutively in stack starting at 0x58, next 6 numbers stored consecutively starting at 0x40
     for i in range(0,6):
-        uc.mem_write(SP + 0x58 + i * 4, int.to_bytes(result[i], byteorder="little"))
+        uc.mem_write(SP + 0x58 + i * 4, int.to_bytes(result[i], length=4, byteorder="little"))
     for i in range(0,6):
-        uc.mem_write(SP + 0x40 + i * 4, int.to_bytes(result[6 + i], byteorder="little"))
+        uc.mem_write(SP + 0x40 + i * 4, int.to_bytes(result[6 + i], length=4, byteorder="little"))
 
 # expected arg1 format: #%u,%u,%u,%u,%u,%u#%u,%u,%u,%u,%u,%u
 arg1 = "#1,1,1,1,1,1#1,1,1,1,1,1"
