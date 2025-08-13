@@ -207,10 +207,10 @@ class Emu:
 
         Args:
             args (int | str | bytes | list[int  |  str  |  bytes]): Values to be stored in the argument registers (A0 to A3). Strings are converted to bytes and given a null terminator. Bytes are stored in memory and a pointer to it is stored in the register. Max number of arguments is 4.
-            reset (bool, optional): Should the state of the CPU be reset before emulation is started. Defaults to True.
+            reset (bool, optional): Should the state of the CPU be reset before emulation is started. Defaults to `True`.
 
         Raises:
-            Exception: If length of args is greater than 4
+            Exception: If length of args is greater than 4. If an arg is not of type `str`, `bytes` or `int`.
             UcError: When the unicorn engine raises an error
 
         Returns:
@@ -282,7 +282,7 @@ class Emu:
         """
         runs = 0
         start_time = datetime.now()
-        while (True):
+        while True:
             args = args_generator()
             if pre_run_function != None:
                 pre_run_function(self, args)
