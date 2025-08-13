@@ -1,4 +1,4 @@
-"""Unicorn wrapper for MIPS binaries
+"""Unicorn wrapper for emulating binaries
 
 Provides the Emu class for setting up and performing emulation.
 
@@ -8,8 +8,8 @@ from unicorn import *
 from unicorn.mips_const import *
 from termcolor import cprint
 from collections.abc import Callable
-import os, sys
 from datetime import datetime
+import os, sys
 
 ARGUMENT_REGISTERS = [
     UC_MIPS_REG_A0,
@@ -88,10 +88,14 @@ def hook_mem_write_unmapped(uc: Uc, access: int, address: int, size: int, value:
     return -1
 
 class Emu:
-    """Creates a unicorn engine instance for MIPS EL emulation"""
+    """Creates a unicorn engine instance for MIPS EL emulation. Default setup is for MIPS EL."""
     CODE_ADDRESS = 0x400000
+    MEMORY_SIZE = 2 * 1024 * 1024 # 2MB
     STACK_ADDRESS = 0x00100000
     STACK_SIZE = 0x00010000
+    ARCHITECTURE = UC_ARCH_MIPS
+    MODE = UC_MODE_MIPS32
+    BYTE_ORDER = UC_MODE_LITTLE_ENDIAN
     hooks: list[Hook] = []
 
     def __init__(
@@ -99,7 +103,7 @@ class Emu:
         binary: str, 
         entry_point: int, 
         end_of_function: int, 
-        debug=False
+        debug = False
     ):
         """
         Args:
@@ -116,12 +120,12 @@ class Emu:
             self.binary_data = file.read()
 
     def setup(self):
-        """Creates a new emulator with the specified state. Overrides any existing emulator."""
-        # initialise emulator in MIPS32 + EL mode
-        uc = Uc(UC_ARCH_MIPS, UC_MODE_MIPS32 + UC_MODE_LITTLE_ENDIAN)
+        """Creates a new emulator with the specified options and the binary loaded into memory. Overwrites any existing emulator."""
+        # initialise emulator
+        uc = Uc(self.ARCHITECTURE, self.MODE + self.BYTE_ORDER)
 
-        # map 2MB memory for this emulation
-        uc.mem_map(self.CODE_ADDRESS, 2 * 1024 * 1024)
+        # map memory for this emulation
+        uc.mem_map(self.CODE_ADDRESS, self.MEMORY_SIZE)
 
         # write machine code to be emulated to memory
         uc.mem_write(self.CODE_ADDRESS, self.binary_data)
@@ -136,11 +140,12 @@ class Emu:
         # add hooks
         uc.hook_add(UC_HOOK_CODE, hook_count_instruction, self)
 
+        # In debug mode hooks are set that print everything the emulator is doing
         if self.debug:
-            # tracing all basic blocks with customized callback
+            # tracing all basic blocks
             uc.hook_add(UC_HOOK_BLOCK, hook_block)
 
-            # tracing all instructions with customized callback
+            # tracing all instructions
             uc.hook_add(UC_HOOK_CODE, hook_print_code)
 
             # tracing all memory read/writes
@@ -179,7 +184,7 @@ class Emu:
         function: Callable[[Uc, int, int, int, int, any], any] | Callable[[Uc, int, int, any], any],
         user_data = None
     ):
-        """Adds a hook to the emulator's list of hooks. Hooks are set when Emu.setup() is called. 
+        """Adds a hook to the emulator's list of hooks. Hooks are set when Emu.setup() is called. Writing a new hook to an existing hook's address will overwrite the old hook.
 
         Args:
             address (int): The address in the binary the hook is set to
@@ -205,13 +210,13 @@ class Emu:
             reset (bool, optional): Should the state of the CPU be reset before emulation is started. Defaults to True.
 
         Raises:
-            Exception: if length of args is greater than 4
-            UcError: when the unicorn engine raises an error
+            Exception: If length of args is greater than 4
+            UcError: When the unicorn engine raises an error
 
         Returns:
-            int: -1 if there was an error during emulation, otherwise the return value stored in the V0 register after emulation finished
+            int: The return value stored in the V0 register after emulation finished
         """
-        if hasattr(self, "uc") == False or reset:
+        if reset or hasattr(self, "uc") == False:
             self.setup()
 
         # set program counter to start of program
