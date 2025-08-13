@@ -1,4 +1,4 @@
-from mips import Emu
+from unicorn.scripts.emu import Emu
 from unicorn import Uc
 from unicorn.mips_const import *
 

@@ -1,4 +1,4 @@
-from mips import *
+from unicorn.scripts.emu import *
 
 # constants are currently setup to run str2num from the httpd binary from the TL-WR841N router
 ENTRY_POINT = 0x412480

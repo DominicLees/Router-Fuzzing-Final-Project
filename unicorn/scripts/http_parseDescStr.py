@@ -1,4 +1,4 @@
-from mips import *
+from unicorn.scripts.emu import *
 from unicorn.mips_const import *
 from parse import parse, Result
 import random

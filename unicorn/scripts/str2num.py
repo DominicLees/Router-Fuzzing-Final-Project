@@ -1,4 +1,4 @@
-from mips import Emu
+from unicorn.scripts.emu import Emu
 import os
 
 # currently setup to run str2num from the httpd binary from the TL-WR841N router
