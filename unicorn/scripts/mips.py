@@ -278,7 +278,7 @@ class Emu:
         start_time = datetime.now()
         while (True):
             args = args_generator()
-            if type(pre_run_function) is not None:
+            if pre_run_function != None:
                 pre_run_function(self, args)
             try:
                 with HiddenPrints():
