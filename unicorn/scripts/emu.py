@@ -234,13 +234,12 @@ class Emu:
             current_address = 0x10000
             self.uc.mem_map(current_address, 0x10000)
 
-            # set each register to an argument
-            i = 0
-            for arg in args:
+            # store each argument in the corresponding register
+            for i, arg in enumerate(args):
                 # convert strings to bytes
                 if type(arg) is str:
                     arg = bytes(arg, "ascii") + b'\00'
-                # write string arguments to memory and set the register value to point to the string
+                # write bytes to memory and set the register value to point to the start of the array
                 if type(arg) is bytes:
                     self.uc.mem_write(current_address, arg)
                     self.uc.reg_write(ARGUMENT_REGISTERS[i], current_address)
@@ -248,11 +247,13 @@ class Emu:
                     current_address += len(arg)
                     # round current_address to the next multiple of 4
                     current_address += 4 - (current_address % 4)
-                # numbers can be written straight into the registers
-                else:
+                # ints are written straight into the registers
+                elif type(arg) is int:
                     self.uc.reg_write(ARGUMENT_REGISTERS[i], arg)
+                # throw error for non compatiable arg type
+                else:
+                    raise Exception("Argument not of type int, str or bytes in args list")
                 print("Set A%d to 0x%x" % (i, self.uc.reg_read(ARGUMENT_REGISTERS[i])))
-                i += 1
 
         print("Starting emulation")
         try:
