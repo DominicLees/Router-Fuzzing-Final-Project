@@ -271,7 +271,7 @@ class Emu:
         self,
         args_generator: Callable[[], list[int | str | bytes]],
         run_limit: int = 0,
-        time_limit = timedelta,
+        time_limit: timedelta = None,
         pre_run_function: Callable[[Uc, list[int | str | bytes]], None] = None
     ):
         """Repeatedly calls run() on the emulator using newly generated args each time
@@ -279,12 +279,15 @@ class Emu:
         Args:
             args_generator (Callable[[], list[int  |  str  |  bytes]]): Function that returns an appropriate list of args. Should be different each time the function is called. 
             run_limit (int, optional): How many times to run the emulation. If 0 is used will run until the program is killed or until time_limit is reached. Defaults to 0.
-            time_limit (timedelta, optional): How long to fuzz for. If none is set will run until the program is killed or until run_limit is reached.
+            time_limit (timedelta, optional): How long to fuzz for. If none is set will run until the program is killed or until run_limit is reached. Defaults to None.
             pre_run_function (Callable[[Uc, list[int  |  str  |  bytes]], None], optional): Function called after a new set of args have been generated and before the emulation is run. Takes the Emu and the args as arguments. Defaults to None.
         """
         runs = 0
         start_time = datetime.now()
-        timeout = start_time + time_limit
+        if time_limit == None:
+            timeout = datetime.max
+        else:
+            timeout = start_time + time_limit
 
         while True:
             args = args_generator()
