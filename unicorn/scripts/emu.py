@@ -8,7 +8,7 @@ from unicorn import *
 from unicorn.mips_const import *
 from termcolor import cprint
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timedelta
 import os, sys
 
 ARGUMENT_REGISTERS = [
@@ -271,17 +271,21 @@ class Emu:
         self,
         args_generator: Callable[[], list[int | str | bytes]],
         run_limit: int = 0,
+        time_limit = timedelta,
         pre_run_function: Callable[[Uc, list[int | str | bytes]], None] = None
     ):
-        """Continuous calls run() on the emulator using newly generated args each time
+        """Repeatedly calls run() on the emulator using newly generated args each time
 
         Args:
             args_generator (Callable[[], list[int  |  str  |  bytes]]): Function that returns an appropriate list of args. Should be different each time the function is called. 
-            run_limit (int, optional): How many times to run the emulation. If 0 is used will run until the program is killed. Defaults to 0.
+            run_limit (int, optional): How many times to run the emulation. If 0 is used will run until the program is killed or until time_limit is reached. Defaults to 0.
+            time_limit (timedelta, optional): How long to fuzz for. If none is set will run until the program is killed or until run_limit is reached.
             pre_run_function (Callable[[Uc, list[int  |  str  |  bytes]], None], optional): Function called after a new set of args have been generated and before the emulation is run. Takes the Emu and the args as arguments. Defaults to None.
         """
         runs = 0
         start_time = datetime.now()
+        timeout = start_time + time_limit
+
         while True:
             args = args_generator()
             if pre_run_function != None:
@@ -290,6 +294,7 @@ class Emu:
                 with HiddenPrints():
                     self.run(args)
             except UcError:
+                # TODO: Log the error and keep on fuzzing instead of exiting
                 cprint("UcError raised with args: %s" % args, "red")
                 break
             except KeyboardInterrupt:
@@ -299,5 +304,5 @@ class Emu:
             runs += 1
             os.system("clear")
             print("Tests: %d, Fuzzing time: %s, Last args: %s" % (runs, current_time - start_time, args))
-            if runs == run_limit:
+            if runs == run_limit or current_time > timeout:
                 break
