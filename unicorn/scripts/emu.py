@@ -34,7 +34,9 @@ class Hook:
         address (int): The address in the binary the hook is set to
         function (Callable): The function called when the emulator reaches the specified address
         user_data (Any): Data passed to the function as an argument
+        handle (int): The hook handle set by unicorn
     """
+    handle = None
     def __init__(
         self, 
         address: int,
@@ -159,7 +161,7 @@ class Emu:
 
         # add user defined hooks
         for hook in self.hooks:
-            uc.hook_add(UC_HOOK_CODE, hook_wrapper, user_data=hook, begin=hook.address, end=hook.address)
+            hook.handle = uc.hook_add(UC_HOOK_CODE, hook_wrapper, user_data=hook, begin=hook.address, end=hook.address)
         self.uc = uc
 
     def get_hook(
@@ -197,6 +199,23 @@ class Emu:
         else:
             hook.function = function
             hook.user_data = user_data
+
+    def remove_hook(
+        self,
+        address: int
+    ):
+        """Removes a hook from the emulator's list of hooks
+
+        Args:
+            address (int): The address of the hook to remove
+        """
+        for i, hook in enumerate(self.hooks):
+            if hook.address == address:
+                if hook.handle != None:
+                    self.uc.hook_del(hook.handle)
+                del self.hooks[i]
+                del hook
+                return
 
     def run(
         self, 
