@@ -225,11 +225,11 @@ class Emu:
         """Starts emulation at the object's entry_point value
 
         Args:
-            args (int | str | bytes | list[int  |  str  |  bytes]): Values to be stored in the argument registers (A0 to A3). Strings are converted to bytes and given a null terminator. Bytes are stored in memory and a pointer to it is stored in the register. Max number of arguments is 4.
+            args (int | str | bytes | list[int  |  str  |  bytes]): Values that will be treated by the machine code as arguments to a function. Strings are converted to bytes and given a null terminator. Bytes are stored in memory and a pointer to it is stored. 
             reset (bool, optional): Should the state of the CPU be reset before emulation is started. Defaults to `True`.
 
         Raises:
-            Exception: If length of args is greater than 4. If an arg is not of type `str`, `bytes` or `int`.
+            Exception: If an arg is not of type `str`, `bytes` or `int`.
             UcError: When the unicorn engine raises an error
 
         Returns:
@@ -245,34 +245,44 @@ class Emu:
             # convert singular argument to a list
             if type(args) is not list:
                 args = [args]
-            # currently only supports passing 4 arguments via the registers, any additional arguments would have to go on the stack, can be added later if needed
-            elif len(args) > 4:
-                raise Exception("Maximum of 4 arguments can be passed into a run")
 
             # map memory for function arguments
             current_address = 0x10000
             self.uc.mem_map(current_address, 0x10000)
+            stack_offset = 4
 
-            # store each argument in the corresponding register
+            # store each argument in the corresponding register or on the stack
             for i, arg in enumerate(args):
+                value_to_write = 0
                 # convert strings to bytes
                 if type(arg) is str:
                     arg = bytes(arg, "ascii") + b'\00'
                 # write bytes to memory and set the register value to point to the start of the array
                 if type(arg) is bytes:
                     self.uc.mem_write(current_address, arg)
-                    self.uc.reg_write(ARGUMENT_REGISTERS[i], current_address)
+                    value_to_write = current_address
                     print("Wrote %s to 0x%x" % (arg, current_address))
                     current_address += len(arg)
                     # round current_address to the next multiple of 4
                     current_address += 4 - (current_address % 4)
                 # ints are written straight into the registers
                 elif type(arg) is int:
-                    self.uc.reg_write(ARGUMENT_REGISTERS[i], arg)
+                    value_to_write = arg
                 # throw error for non compatiable arg type
                 else:
                     raise Exception("Argument not of type int, str or bytes in args list")
-                print("Set A%d to 0x%x" % (i, self.uc.reg_read(ARGUMENT_REGISTERS[i])))
+                
+                # first 4 arguments go into registers
+                if i < 4:
+                    self.uc.reg_write(ARGUMENT_REGISTERS[i], value_to_write)
+                    print("Set A%d to 0x%x" % (i, self.uc.reg_read(ARGUMENT_REGISTERS[i])))
+                # all other arguments are pushed onto the stack
+                else:
+                    new_sp = self.uc.reg_read(UC_MIPS_REG_SP) - stack_offset
+                    self.uc.reg_write(UC_MIPS_REG_SP, new_sp)
+                    self.uc.mem_write(new_sp, int.to_bytes(value_to_write, 4, "little"))
+                    stack_offset += 4
+                    print("Pushed 0x%x on to the stack at 0x%x" % (value_to_write, new_sp))
 
         print("Starting emulation")
         try:
