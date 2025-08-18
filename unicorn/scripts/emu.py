@@ -11,13 +11,6 @@ from collections.abc import Callable
 from datetime import datetime, timedelta
 import os, sys
 
-ARGUMENT_REGISTERS = [
-    UC_MIPS_REG_A0,
-    UC_MIPS_REG_A1,
-    UC_MIPS_REG_A2,
-    UC_MIPS_REG_A3
-]
-
 class HiddenPrints:
     def __enter__(self):
         self._original_stdout = sys.stdout
@@ -98,6 +91,12 @@ class Emu:
     ARCHITECTURE = UC_ARCH_MIPS
     MODE = UC_MODE_MIPS32
     BYTE_ORDER = UC_MODE_LITTLE_ENDIAN
+    ARGUMENT_REGISTERS = [
+        UC_MIPS_REG_A0,
+        UC_MIPS_REG_A1,
+        UC_MIPS_REG_A2,
+        UC_MIPS_REG_A3
+    ]
     hooks: list[Hook] = []
 
     def __init__(
@@ -272,10 +271,10 @@ class Emu:
                 else:
                     raise Exception("Argument not of type int, str or bytes in args list")
                 
-                # first 4 arguments go into registers
-                if i < 4:
-                    self.uc.reg_write(ARGUMENT_REGISTERS[i], value_to_write)
-                    print("Set A%d to 0x%x" % (i, self.uc.reg_read(ARGUMENT_REGISTERS[i])))
+                # first set of arguments go into registers
+                if i < len(self.ARGUMENT_REGISTERS):
+                    self.uc.reg_write(self.ARGUMENT_REGISTERS[i], value_to_write)
+                    print("Set A%d to 0x%x" % (i, self.uc.reg_read(self.ARGUMENT_REGISTERS[i])))
                 # all other arguments are pushed onto the stack
                 else:
                     new_sp = self.uc.reg_read(UC_MIPS_REG_SP) - stack_offset
