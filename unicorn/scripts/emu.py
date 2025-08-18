@@ -41,7 +41,7 @@ class Hook:
         self.user_data = user_data
 
 # callback for tracing basic blocks
-def hook_block(uc: Uc, address: int, size: int, user_data):
+def hook_print_block(uc: Uc, address: int, size: int, user_data):
     print(">>> Tracing basic block at 0x%x, block size = 0x%x" % (address, size))
 
 # callback for tracing instructions
@@ -50,6 +50,9 @@ def hook_print_code(uc: Uc, address: int, size: int, user_data):
 
 def hook_count_instruction(uc: Uc, address: int, size: int, user_data: "Emu"):
     user_data.instructions_executed += 1
+
+def hook_count_block(uc: Uc, address: int, size: int, user_data: "Emu"):
+    user_data.blocks.append(address)
 
 # callback for tracing memory reads
 def hook_mem_read(uc: Uc, access: int, address: int, size: int, value: int, user_data):
@@ -138,13 +141,17 @@ class Emu:
         # set instruction counter
         self.instructions_executed = 0
 
-        # add hooks
+        # set list of blocks entered
+        self.blocks = []
+
+        # add code coverage hooks
         uc.hook_add(UC_HOOK_CODE, hook_count_instruction, self)
+        uc.hook_add(UC_HOOK_BLOCK, hook_count_block, self)
 
         # In debug mode hooks are set that print everything the emulator is doing
         if self.debug:
             # tracing all basic blocks
-            uc.hook_add(UC_HOOK_BLOCK, hook_block)
+            uc.hook_add(UC_HOOK_BLOCK, hook_print_block)
 
             # tracing all instructions
             uc.hook_add(UC_HOOK_CODE, hook_print_code)
@@ -292,7 +299,7 @@ class Emu:
             cprint("ERROR: %s" % e, "red")
             raise e
 
-        print("Finished emulation. Instructions executed = %d" % self.instructions_executed)
+        print("Finished emulation. Instructions executed = %d. Basic blocks entered = %d" % (self.instructions_executed, len(self.blocks)))
         return result
     
     def fuzz(
