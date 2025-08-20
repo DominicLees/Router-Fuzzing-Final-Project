@@ -136,7 +136,7 @@ class Emu:
 
         # setup the stack
         uc.mem_map(self.STACK_ADDRESS, self.STACK_SIZE)
-        uc.reg_write(UC_MIPS_REG_SP, self.STACK_ADDRESS + self.STACK_SIZE)
+        uc.reg_write(UC_MIPS_REG_SP, self.STACK_ADDRESS + self.STACK_SIZE - 4)
 
         # set instruction counter
         self.instructions_executed = 0
