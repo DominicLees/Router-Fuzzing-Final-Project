@@ -74,15 +74,15 @@ def hook_wrapper(uc: Uc, address: int, size: int, user_data: Hook):
     return result
 
 def hook_mem_fetch_unmapped(uc: Uc, access: int, address: int, size: int, value: int, user_data):
-    cprint("ERROR: Attempt to fetch from 0x%x" % address, "red")
+    cprint("ERROR: Attempt to fetch from 0x%x on line 0x%x" % (address, uc.reg_read(UC_MIPS_REG_PC)), "red")
     return -1
 
 def hook_mem_read_unmapped(uc: Uc, access: int, address: int, size: int, value: int, user_data):
-    cprint("ERROR: Attempt to read from 0x%x" % address, "red")
+    cprint("ERROR: Attempt to read from 0x%x on line 0x%x" % (address, uc.reg_read(UC_MIPS_REG_PC)), "red")
     return -1
 
 def hook_mem_write_unmapped(uc: Uc, access: int, address: int, size: int, value: int, user_data):
-    cprint("ERROR: Attempt to write to 0x%x" % address, "red")
+    cprint("ERROR: Attempt to write to 0x%x on line 0x%x" % (address, uc.reg_read(UC_MIPS_REG_PC)), "red")
     return -1
 
 class Emu:
