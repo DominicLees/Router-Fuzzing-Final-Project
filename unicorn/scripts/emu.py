@@ -201,10 +201,15 @@ class Emu:
         """
         hook = self.get_hook(address)
         if hook == None:
-            self.hooks.append(Hook(address, function, user_data))
+            hook = Hook(address, function, user_data)
+            self.hooks.append(hook)
         else:
             hook.function = function
             hook.user_data = user_data
+        
+        # add hook to existing unicorn instance
+        if hasattr(self, "uc"):
+            hook.handle = self.uc.hook_add(UC_HOOK_CODE, hook_wrapper, user_data=hook, begin=hook.address, end=hook.address)
 
     def remove_hook(
         self,
@@ -328,14 +333,16 @@ class Emu:
 
         while True:
             args = args_generator()
+            self.setup()
             if pre_run_function != None:
                 pre_run_function(self, args)
             try:
                 with HiddenPrints():
-                    return_value = self.run(args)
-            except UcError:
+                    return_value = self.run(args, False)
+            except UcError as e:
                 # TODO: Log the error and keep on fuzzing instead of exiting
-                cprint("UcError raised with args: %s" % args, "red")
+                os.system("clear")
+                print("%s\nUcError raised with args: %s\nTests: %d, Fuzzing time: %s" % (e, args, runs, current_time - start_time))
                 break
             except KeyboardInterrupt:
                 break
