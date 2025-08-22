@@ -74,15 +74,15 @@ def hook_wrapper(uc: Uc, address: int, size: int, user_data: Hook):
     return result
 
 def hook_mem_fetch_unmapped(uc: Uc, access: int, address: int, size: int, value: int, user_data):
-    cprint("ERROR: Attempt to fetch from 0x%x" % address, "red")
+    cprint("ERROR: Attempt to fetch from 0x%x on line 0x%x" % (address, uc.reg_read(UC_MIPS_REG_PC)), "red")
     return -1
 
 def hook_mem_read_unmapped(uc: Uc, access: int, address: int, size: int, value: int, user_data):
-    cprint("ERROR: Attempt to read from 0x%x" % address, "red")
+    cprint("ERROR: Attempt to read from 0x%x on line 0x%x" % (address, uc.reg_read(UC_MIPS_REG_PC)), "red")
     return -1
 
 def hook_mem_write_unmapped(uc: Uc, access: int, address: int, size: int, value: int, user_data):
-    cprint("ERROR: Attempt to write to 0x%x" % address, "red")
+    cprint("ERROR: Attempt to write to 0x%x on line 0x%x" % (address, uc.reg_read(UC_MIPS_REG_PC)), "red")
     return -1
 
 class Emu:
@@ -136,7 +136,7 @@ class Emu:
 
         # setup the stack
         uc.mem_map(self.STACK_ADDRESS, self.STACK_SIZE)
-        uc.reg_write(UC_MIPS_REG_SP, self.STACK_ADDRESS + self.STACK_SIZE)
+        uc.reg_write(UC_MIPS_REG_SP, self.STACK_ADDRESS + self.STACK_SIZE - 4)
 
         # set instruction counter
         self.instructions_executed = 0
@@ -201,10 +201,15 @@ class Emu:
         """
         hook = self.get_hook(address)
         if hook == None:
-            self.hooks.append(Hook(address, function, user_data))
+            hook = Hook(address, function, user_data)
+            self.hooks.append(hook)
         else:
             hook.function = function
             hook.user_data = user_data
+        
+        # add hook to existing unicorn instance
+        if hasattr(self, "uc"):
+            hook.handle = self.uc.hook_add(UC_HOOK_CODE, hook_wrapper, user_data=hook, begin=hook.address, end=hook.address)
 
     def remove_hook(
         self,
@@ -307,8 +312,8 @@ class Emu:
         args_generator: Callable[[], list[int | str | bytes]],
         run_limit: int = 0,
         time_limit: timedelta = None,
-        pre_run_function: Callable[[Uc, list[int | str | bytes]], None] = None,
-        post_run_function: Callable[[Uc, int], None] = None
+        pre_run_function: Callable[["Emu", list[int | str | bytes]], None] = None,
+        post_run_function: Callable[["Emu", int], None] = None
     ):
         """Repeatedly calls run() on the emulator using newly generated args each time
 
@@ -316,8 +321,8 @@ class Emu:
             args_generator (Callable[[], list[int  |  str  |  bytes]]): Function that returns an appropriate list of args. Should be different each time the function is called. 
             run_limit (int, optional): How many times to run the emulation. If 0 is used will run until the program is killed or until time_limit is reached. Defaults to 0.
             time_limit (timedelta, optional): How long to fuzz for. If none is set will run until the program is killed or until run_limit is reached. Defaults to None.
-            pre_run_function (Callable[[Uc, list[int  |  str  |  bytes]], None], optional): Function called after a new set of args have been generated and before the emulation is run. Takes the Emu and the args as arguments. Defaults to None.
-            post_run_function (Callable[[Uc, int], None], optional): Function called after the emulation has finished. Takes the return value as an argument. Defaults to None.
+            pre_run_function (Callable[[Emu, list[int  |  str  |  bytes]], None], optional): Function called after a new set of args have been generated and before the emulation is run. Takes the Emu and the args as arguments. Defaults to None.
+            post_run_function (Callable[[Emu, int], None], optional): Function called after the emulation has finished. Takes the return value as an argument. Defaults to None.
         """
         runs = 0
         start_time = datetime.now()
@@ -328,14 +333,16 @@ class Emu:
 
         while True:
             args = args_generator()
+            self.setup()
             if pre_run_function != None:
                 pre_run_function(self, args)
             try:
                 with HiddenPrints():
-                    return_value = self.run(args)
-            except UcError:
+                    return_value = self.run(args, False)
+            except UcError as e:
                 # TODO: Log the error and keep on fuzzing instead of exiting
-                cprint("UcError raised with args: %s" % args, "red")
+                os.system("clear")
+                print("%s\nUcError raised with args: %s\nTests: %d, Fuzzing time: %s" % (e, args, runs, current_time - start_time))
                 break
             except KeyboardInterrupt:
                 break
