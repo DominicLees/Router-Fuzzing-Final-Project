@@ -7,3 +7,5 @@
 - **experiments** - contains C code that were used to test simple concepts around fuzzing
 - **mips-compilation** - contains a docker container for compiling C code into MIPS32 binaries
 - **unicorn** - contains a docker container to run python scripts that use the unicorn CPU emulator
+- - **scripts** - contains fuzzing scripts
+- - - **emu.py** - the fuzzing tool
